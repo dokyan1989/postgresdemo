@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS orders_raw_data;
+DROP TABLE IF EXISTS shipments;
+DROP TABLE IF EXISTS invoices;
