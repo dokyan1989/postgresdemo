@@ -5,23 +5,27 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Order struct {
-	ID                 string    `db:"id"`
-	FulfillmentStatus  string    `db:"fulfillment_status"`
-	PaymentStatus      string    `db:"payment_status"`
-	ConfirmationStatus string    `db:"confirmation_status"`
-	CustomerPhone      string    `db:"customer_phone"`
-	CustomerName       string    `db:"customer_name"`
-	CustomerEmail      string    `db:"customer_email"`
-	ShippingInfoPhone  string    `db:"shipping_info_phone"`
-	TerminalId         int64     `db:"terminal_id"`
-	PlatformId         int64     `db:"platform_id"`
-	CreatorId          string    `db:"creator_id"`
-	ConsultantId       string    `db:"consultant_id"`
-	CreatedAt          time.Time `db:"created_at"`
-	UpdatedAt          time.Time `db:"updated_at"`
+	ID                 string        `db:"id"`
+	FulfillmentStatus  string        `db:"fulfillment_status"`
+	PaymentStatus      string        `db:"payment_status"`
+	ConfirmationStatus string        `db:"confirmation_status"`
+	HoldStatus         bool          `db:"hold_status"`
+	CustomerPhone      string        `db:"customer_phone"`
+	CustomerName       string        `db:"customer_name"`
+	CustomerEmail      string        `db:"customer_email"`
+	ShippingInfoPhone  string        `db:"shipping_info_phone"`
+	TerminalId         int64         `db:"terminal_id"`
+	PlatformId         int64         `db:"platform_id"`
+	CreatorId          string        `db:"creator_id"`
+	ConsultantId       string        `db:"consultant_id"`
+	SiteIds            pq.Int64Array `db:"site_ids"`
+	CreatedAt          time.Time     `db:"created_at"`
+	UpdatedAt          time.Time     `db:"updated_at"`
 }
 
 type OrderRawData struct {
@@ -37,41 +41,42 @@ type OrderRawData struct {
 | Order Info
 |-----------------------------------------------------------------------*/
 type OrderInfo struct {
-	ID                      string                    `json:"id"`
-	OrderToken              string                    `json:"orderToken"`
-	GrandTotal              int64                     `json:"grandTotal"`
-	RemainPayment           int                       `json:"remainPayment"`
-	QrPromotionAmount       int                       `json:"qrPromotionAmount"`
-	TotalFee                int64                     `json:"totalFee"`
-	PlatformID              int64                     `json:"platformId"`
-	TerminalCode            string                    `json:"terminalCode"`
-	TerminalID              int                       `json:"terminalId"`
-	CustomerInfo            OICustomerInfo            `json:"customerInfo"`
-	Creator                 OICreator                 `json:"creator"`
-	Items                   []OIItem                  `json:"items"`
-	BillingInfo             OIBillingInfo             `json:"billingInfo"`
-	DeliveryInfo            OIDeliveryInfo            `json:"deliveryInfo"`
-	Consultant              OIConsultant              `json:"consultant"`
-	CreatedAt               string                    `json:"createdAt"`
-	UpdatedAt               string                    `json:"updatedAt"`
-	Note                    string                    `json:"note"`
-	PaymentStatus           string                    `json:"paymentStatus"`
-	HoldStatus              bool                      `json:"holdStatus"`
-	ConfirmationStatus      string                    `json:"confirmationStatus"`
-	OrderPromotion          []OIOrderPromotion        `json:"orderPromotion"`
-	PromotionDiscount       int                       `json:"promotionDiscount"`
-	OnDemandDiscount        int64                     `json:"onDemandDiscount"`
-	TotalDiscount           int64                     `json:"totalDiscount"`
-	UpdatedBy               string                    `json:"updatedBy"`
-	ReplaceOrderID          string                    `json:"replaceOrderId"`
-	ExternalOrderRef        string                    `json:"externalOrderRef"`
-	SendEmailToBuyer        bool                      `json:"sendEmailToBuyer"`
-	IsHandover              bool                      `json:"isHandover"`
-	TotalPaid               int                       `json:"totalPaid"`
-	Services                []OIService               `json:"services"`
-	Payments                []OIPayment               `json:"payments"`
-	DiscountApproval        OIDiscountApproval        `json:"discountApproval"`
-	DeferredPaymentApproval OIDeferredPaymentApproval `json:"deferredPaymentApproval"`
+	ID                      string                       `json:"id"`
+	OrderToken              string                       `json:"orderToken"`
+	GrandTotal              float64                      `json:"grandTotal"`
+	RemainPayment           float64                      `json:"remainPayment"`
+	QrPromotionAmount       float64                      `json:"qrPromotionAmount"`
+	TotalFee                float64                      `json:"totalFee"`
+	PlatformID              int64                        `json:"platformId"`
+	TerminalCode            string                       `json:"terminalCode"`
+	TerminalID              int64                        `json:"terminalId"`
+	CustomerInfo            OrderCustomerInfo            `json:"customerInfo"`
+	Creator                 OrderCreator                 `json:"creator"`
+	Items                   []OrderItem                  `json:"items"`
+	BillingInfo             OrderBillingInfo             `json:"billingInfo"`
+	DeliveryInfo            OrderDeliveryInfo            `json:"deliveryInfo"`
+	Consultant              OrderConsultant              `json:"consultant"`
+	CreatedAt               time.Time                    `json:"createdAt"`
+	UpdatedAt               time.Time                    `json:"updatedAt"`
+	Note                    string                       `json:"note"`
+	PaymentStatus           string                       `json:"paymentStatus"`
+	HoldStatus              bool                         `json:"holdStatus"`
+	ConfirmationStatus      string                       `json:"confirmationStatus"`
+	Promotions              []Promotion                  `json:"promotions"`
+	OrderPromotions         []OrderPromotion             `json:"orderPromotions"`
+	PromotionDiscount       float64                      `json:"promotionDiscount"`
+	OnDemandDiscount        float64                      `json:"onDemandDiscount"`
+	TotalDiscount           float64                      `json:"totalDiscount"`
+	UpdatedBy               string                       `json:"updatedBy"`
+	ReplaceOrderID          string                       `json:"replaceOrderId"`
+	ExternalOrderRef        string                       `json:"externalOrderRef"`
+	SendEmailToBuyer        bool                         `json:"sendEmailToBuyer"`
+	IsHandover              bool                         `json:"isHandover"`
+	TotalPaid               float64                      `json:"totalPaid"`
+	Services                []OrderService               `json:"services"`
+	Payments                []OrderPayment               `json:"payments"`
+	DiscountApproval        OrderDiscountApproval        `json:"discountApproval"`
+	DeferredPaymentApproval OrderDeferredPaymentApproval `json:"deferredPaymentApproval"`
 }
 
 func (o OrderInfo) Value() (driver.Value, error) {
@@ -88,57 +93,61 @@ func (o *OrderInfo) Scan(value interface{}) error {
 	return json.Unmarshal(b, &o)
 }
 
-type OICustomerInfo struct {
+type OrderCustomerInfo struct {
 	ID        string `json:"id"`
 	ProfileID string `json:"profileId"`
-	CustomID  string `json:"customId"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Phone     string `json:"phone"`
 }
 
-type OICreator struct {
+type OrderCreator struct {
 	ID        string `json:"id"`
 	ProfileID string `json:"profileId"`
-	CustomID  string `json:"customId"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Phone     string `json:"phone"`
 }
 
-type OIItem struct {
-	LineItemID        string            `json:"lineItemId"`
-	Sku               string            `json:"sku"`
-	SellerSku         string            `json:"sellerSku"`
-	ServiceID         int64             `json:"serviceId"`
-	DisplayName       string            `json:"displayName"`
-	Uom               string            `json:"uom"`
-	Quantity          int               `json:"quantity"`
-	CancelledQuantity int               `json:"cancelledQuantity"`
-	SiteID            int               `json:"siteId"`
-	Serials           []string          `json:"serials"`
-	Warranty          int               `json:"warranty"`
-	Price             int               `json:"price"`
-	OriginalPrice     int               `json:"originalPrice"`
-	RowTotal          int               `json:"rowTotal"`
-	IsGift            bool              `json:"isGift"`
-	OnDemandDiscount  int               `json:"onDemandDiscount"`
-	Promotions        []OIItemPromotion `json:"promotions"`
-	IsAdult           bool              `json:"isAdult"`
+type OrderItem struct {
+	LineItemID        string               `json:"lineItemId"`
+	Sku               string               `json:"sku"`
+	SellerSku         string               `json:"sellerSku"`
+	ServiceID         int64                `json:"serviceId"`
+	DisplayName       string               `json:"displayName"`
+	Uom               string               `json:"uom"`
+	Quantity          float64              `json:"quantity"`
+	CancelledQuantity float64              `json:"cancelledQuantity"`
+	SiteID            int64                `json:"siteId"`
+	Serials           []string             `json:"serials"`
+	Warranty          float64              `json:"warranty"`
+	Price             float64              `json:"price"`
+	OriginalPrice     float64              `json:"originalPrice"`
+	RowTotal          float64              `json:"rowTotal"`
+	IsGift            bool                 `json:"isGift"`
+	OnDemandDiscount  float64              `json:"onDemandDiscount"`
+	Promotions        []OrderItemPromotion `json:"promotions"`
+	IsAdult           bool                 `json:"isAdult"`
 }
 
-type OIBillingInfo struct {
+type OrderItemPromotion struct {
+	ID            int    `json:"id"`
+	PromotionID   string `json:"promotionId"`
+	PromotionJSON string `json:"promotionJson"`
+}
+
+type OrderBillingInfo struct {
 	Name              string    `json:"name"`
 	Address           string    `json:"address"`
 	Email             string    `json:"email"`
-	TaxCode           string    `json:"taxCode"`
-	Phone             string    `json:"phone"`
-	Type              string    `json:"type"`
+	TaxCode           int64     `json:"taxCode"`
+	Phone             int       `json:"phone"`
+	Type              int       `json:"type"`
 	Note              string    `json:"note"`
 	ExpectedIssueDate time.Time `json:"expectedIssueDate"`
 }
 
-type OIDeliveryInfo struct {
+type OrderDeliveryInfo struct {
 	Name                          string    `json:"name"`
 	Phone                         string    `json:"phone"`
 	Email                         string    `json:"email"`
@@ -152,7 +161,7 @@ type OIDeliveryInfo struct {
 	ProvinceName                  string    `json:"provinceName"`
 	FullAddress                   string    `json:"fullAddress"`
 	Country                       string    `json:"country"`
-	Lattitude                     string    `json:"lattitude"`
+	Latitude                      string    `json:"latitude"`
 	Longitude                     string    `json:"longitude"`
 	Note                          string    `json:"note"`
 	SiteID                        int       `json:"siteId"`
@@ -163,21 +172,22 @@ type OIDeliveryInfo struct {
 	ScheduledDeliveryTimeSlotTo   string    `json:"scheduledDeliveryTimeSlotTo"`
 }
 
-type OIConsultant struct {
+type OrderConsultant struct {
 	ID        string `json:"id"`
 	ProfileID string `json:"profileId"`
-	CustomID  string `json:"customId"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
 	Phone     string `json:"phone"`
+	CustomID  string `json:"customId"`
 }
 
-type OIOrderPromotion struct {
-	PromotionID int    `json:"promotionId"`
-	Benefit     string `json:"benefit"`
+type OrderPromotion struct {
+	ID            int    `json:"id"`
+	PromotionID   string `json:"promotionId"`
+	PromotionJSON string `json:"promotionJson"`
 }
 
-type OIService struct {
+type OrderService struct {
 	ID         int64  `json:"id"`
 	Sku        string `json:"sku"`
 	Name       string `json:"name"`
@@ -187,7 +197,7 @@ type OIService struct {
 	GroupID    int    `json:"groupId"`
 }
 
-type OIPayment struct {
+type OrderPayment struct {
 	MethodCode             string `json:"methodCode"`
 	Amount                 int64  `json:"amount"`
 	TransactionCode        string `json:"transactionCode"`
@@ -198,7 +208,7 @@ type OIPayment struct {
 	CashierID              string `json:"cashierId"`
 }
 
-type OIDiscountApproval struct {
+type OrderDiscountApproval struct {
 	ApproverID string `json:"approverId"`
 	Amount     int64  `json:"amount"`
 	ReasonID   int64  `json:"reasonId"`
@@ -207,7 +217,7 @@ type OIDiscountApproval struct {
 	Note       string `json:"note"`
 }
 
-type OIDeferredPaymentApproval struct {
+type OrderDeferredPaymentApproval struct {
 	Amount                         int64  `json:"amount"`
 	DeferredPaymentPeriod          int64  `json:"deferredPaymentPeriod"`
 	DeferredPaymentRequireApproval bool   `json:"deferredPaymentRequireApproval"`
@@ -216,22 +226,24 @@ type OIDeferredPaymentApproval struct {
 	Note                           string `json:"note"`
 }
 
-type OIItemPromotion struct {
-	ID               int                           `json:"id"`
-	PromotionID      string                        `json:"promotionId"`
-	Type             string                        `json:"type"`
-	ApplyType        string                        `json:"applyType"`
-	ApplyOn          []OIItemPromotionApplyOn      `json:"applyOn"`
-	Discount         int                           `json:"discount"`
-	OriginalDiscount int                           `json:"originalDiscount"`
-	DiscountItems    []OIItemPromotionDiscountItem `json:"discountItems"`
-	Gifts            []OIItemPromotionGift         `json:"gifts"`
-	RemovedGifts     []OIItemPromotionRemovedGift  `json:"removedGifts"`
-	Quantity         int                           `json:"quantity"`
-	Voucher          OIItemPromotionVoucher        `json:"voucher"`
+type Promotion struct {
+	ID               int                     `json:"id"`
+	PromotionID      string                  `json:"promotionId"`
+	Type             string                  `json:"type"`
+	ApplyType        string                  `json:"applyType"`
+	IsDefault        bool                    `json:"isDefault"`
+	Coupon           string                  `json:"coupon"`
+	ApplyOn          []PromotionApplyOn      `json:"applyOn"`
+	Discount         int                     `json:"discount"`
+	OriginalDiscount int                     `json:"originalDiscount"`
+	DiscountItems    []PromotionDiscountItem `json:"discountItems"`
+	Gifts            []PromotionGift         `json:"gifts"`
+	RemovedGifts     []PromotionRemovedGift  `json:"removedGifts"`
+	Quantity         int                     `json:"quantity"`
+	Voucher          PromotionVoucher        `json:"voucher"`
 }
 
-type OIItemPromotionApplyOn struct {
+type PromotionApplyOn struct {
 	LineItemID       string `json:"lineItemId"`
 	ServiceID        int64  `json:"serviceId"`
 	Quantity         int    `json:"quantity"`
@@ -239,29 +251,26 @@ type OIItemPromotionApplyOn struct {
 	Sku              string `json:"sku"`
 }
 
-type OIItemPromotionDiscountItem struct {
+type PromotionDiscountItem struct {
 	LineItemID string `json:"lineItemId"`
 	Sku        string `json:"sku"`
 	Quantity   int64  `json:"quantity"`
 }
 
-type OIItemPromotionGift struct {
+type PromotionGift struct {
 	LineItemID string `json:"lineItemId"`
 	Sku        string `json:"sku"`
 	Quantity   int    `json:"quantity"`
 	Name       string `json:"name"`
 }
 
-type OIItemPromotionRemovedGift struct {
+type PromotionRemovedGift struct {
 	Sku      string `json:"sku"`
 	Quantity int    `json:"quantity"`
 }
 
-type OIItemPromotionVoucher struct {
-	Quantity     int    `json:"quantity"`
-	Coupon       string `json:"coupon"`
-	SellerIds    []int  `json:"sellerIds"`
-	ComboApplyOn string `json:"comboApplyOn"`
+type PromotionVoucher struct {
+	Quantity int `json:"quantity"`
 }
 
 /**
@@ -285,25 +294,25 @@ func (r *ReturnInfo) Scan(value interface{}) error {
 }
 
 type ReturnRequest struct {
-	OrderID                   string    `json:"orderId"`
-	ReturnRequestID           int64     `json:"returnRequestId"`
-	PlatformID                string    `json:"platformId"`
-	ReasonID                  string    `json:"reasonId"`
-	Reason                    string    `json:"reason"`
-	SiteID                    int       `json:"siteId"`
-	WarehouseProviderExportID string    `json:"warehouseProviderExportId"`
-	Status                    string    `json:"status"`
-	Items                     []RRItem  `json:"items"`
-	CustomerNotify            bool      `json:"customerNotify"`
-	CustomerInstruction       string    `json:"customerInstruction"`
-	Comment                   string    `json:"comment"`
-	CreatedByEmail            string    `json:"createdByEmail"`
-	ApprovedByEmail           string    `json:"approvedByEmail"`
-	CreatedAt                 time.Time `json:"createdAt"`
-	UpdatedAt                 time.Time `json:"updatedAt"`
+	OrderID                   string              `json:"orderId"`
+	ReturnRequestID           int64               `json:"returnRequestId"`
+	PlatformID                string              `json:"platformId"`
+	ReasonID                  string              `json:"reasonId"`
+	Reason                    string              `json:"reason"`
+	SiteID                    int                 `json:"siteId"`
+	WarehouseProviderExportID string              `json:"warehouseProviderExportId"`
+	Status                    string              `json:"status"`
+	Items                     []ReturnRequestItem `json:"items"`
+	CustomerNotify            bool                `json:"customerNotify"`
+	CustomerInstruction       string              `json:"customerInstruction"`
+	Comment                   string              `json:"comment"`
+	CreatedByEmail            string              `json:"createdByEmail"`
+	ApprovedByEmail           string              `json:"approvedByEmail"`
+	CreatedAt                 time.Time           `json:"createdAt"`
+	UpdatedAt                 time.Time           `json:"updatedAt"`
 }
 
-type RRItem struct {
+type ReturnRequestItem struct {
 	ID                    string `json:"id"`
 	SellerID              int64  `json:"sellerId"`
 	ShipmentID            string `json:"shipmentId"`

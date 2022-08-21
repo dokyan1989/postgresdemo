@@ -1,1 +1,0 @@
-{"buildTargets":["add_migration_file","client","create_pg_volume","exec_pg","pull_pg","rm_pg","run_pg","server","start_pg","stop_pg"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}

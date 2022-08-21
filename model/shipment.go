@@ -19,42 +19,42 @@ type Shipment struct {
 }
 
 type ShipmentInfo struct {
-	OrderID                     string    `json:"orderId"`
-	ShipmentID                  string    `json:"shipmentId"`
-	ShipmentCode                string    `json:"shipmentCode"`
-	SellerID                    int64     `json:"sellerId"`
-	Status                      string    `json:"status"`
-	Items                       []SIItem  `json:"items"`
-	DocumentIds                 []string  `json:"documentIds"`
-	FulfillmentChannelID        int64     `json:"fulfillmentChannelId"`
-	FulfillmentChannelName      string    `json:"fulfillmentChannelName"`
-	IsAuto                      bool      `json:"isAuto"`
-	ReplacedShipmentID          string    `json:"replacedShipmentId"`
-	OutboundRequestID           string    `json:"outboundRequestId"`
-	OutboundRequestAt           int64     `json:"outboundRequestAt"`
-	WarehouseProviderExportID   string    `json:"warehouseProviderExportId"`
-	WarehouseExportAt           int64     `json:"warehouseExportAt"`
-	WarehouseProviderID         int64     `json:"warehouseProviderId"`
-	NumberOfPackages            int64     `json:"numberOfPackages"`
-	Height                      int64     `json:"height"`
-	Length                      int64     `json:"length"`
-	Width                       int64     `json:"width"`
-	TotalWeight                 int64     `json:"totalWeight"`
-	TransportProviderID         string    `json:"transportProviderId"`
-	TransportProviderName       string    `json:"transportProviderName"`
-	TransportProviderType       string    `json:"transportProviderType"`
-	TransportTrackingID         string    `json:"transportTrackingId"`
-	AllowTrialOnDelivery        string    `json:"allowTrialOnDelivery"`
-	DeliveryMethodCode          string    `json:"deliveryMethodCode"`
-	DeliveryRequestCreatedAt    time.Time `json:"deliveryRequestCreatedAt"`
-	DeliveryRequestCreatorIamID string    `json:"deliveryRequestCreatorIamId"`
-	DeliveryRequestID           string    `json:"deliveryRequestId"`
-	DeliveryRequestStatus       string    `json:"deliveryRequestStatus"`
-	DeliveryTypeGroupID         string    `json:"deliveryTypeGroupId"`
-	DeliveryTypeID              string    `json:"deliveryTypeId"`
-	Description                 string    `json:"description"`
-	ExpectDeliveryDueFrom       time.Time `json:"expectDeliveryDueFrom"`
-	ExpectDeliveryDueTo         time.Time `json:"expectDeliveryDueTo"`
+	OrderID                     string         `json:"orderId"`
+	ShipmentID                  string         `json:"shipmentId"`
+	ShipmentCode                string         `json:"shipmentCode"`
+	SellerID                    int64          `json:"sellerId"`
+	Status                      string         `json:"status"`
+	Items                       []ShipmentItem `json:"items"`
+	DocumentIds                 []string       `json:"documentIds"`
+	FulfillmentChannelID        int64          `json:"fulfillmentChannelId"`
+	FulfillmentChannelName      string         `json:"fulfillmentChannelName"`
+	IsAuto                      bool           `json:"isAuto"`
+	ReplacedShipmentID          string         `json:"replacedShipmentId"`
+	OutboundRequestID           string         `json:"outboundRequestId"`
+	OutboundRequestAt           int64          `json:"outboundRequestAt"`
+	WarehouseProviderExportID   string         `json:"warehouseProviderExportId"`
+	WarehouseExportAt           int64          `json:"warehouseExportAt"`
+	WarehouseProviderID         int64          `json:"warehouseProviderId"`
+	NumberOfPackages            int64          `json:"numberOfPackages"`
+	Height                      int64          `json:"height"`
+	Length                      int64          `json:"length"`
+	Width                       int64          `json:"width"`
+	TotalWeight                 int64          `json:"totalWeight"`
+	TransportProviderID         string         `json:"transportProviderId"`
+	TransportProviderName       string         `json:"transportProviderName"`
+	TransportProviderType       string         `json:"transportProviderType"`
+	TransportTrackingID         string         `json:"transportTrackingId"`
+	AllowTrialOnDelivery        string         `json:"allowTrialOnDelivery"`
+	DeliveryMethodCode          string         `json:"deliveryMethodCode"`
+	DeliveryRequestCreatedAt    time.Time      `json:"deliveryRequestCreatedAt"`
+	DeliveryRequestCreatorIamID string         `json:"deliveryRequestCreatorIamId"`
+	DeliveryRequestID           string         `json:"deliveryRequestId"`
+	DeliveryRequestStatus       string         `json:"deliveryRequestStatus"`
+	DeliveryTypeGroupID         string         `json:"deliveryTypeGroupId"`
+	DeliveryTypeID              string         `json:"deliveryTypeId"`
+	Description                 string         `json:"description"`
+	ExpectDeliveryDueFrom       time.Time      `json:"expectDeliveryDueFrom"`
+	ExpectDeliveryDueTo         time.Time      `json:"expectDeliveryDueTo"`
 }
 
 func (s ShipmentInfo) Value() (driver.Value, error) {
@@ -71,7 +71,7 @@ func (s *ShipmentInfo) Scan(value interface{}) error {
 	return json.Unmarshal(b, &s)
 }
 
-type SIItem struct {
+type ShipmentItem struct {
 	Sku          string   `json:"sku"`
 	SiteID       int64    `json:"siteId"`
 	LineItemID   string   `json:"lineItemId"`

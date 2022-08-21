@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -8,56 +9,90 @@ import (
 	jsonhelper "github.com/dokyan1989/postgresdemo/helper/json"
 	"github.com/dokyan1989/postgresdemo/model"
 	"github.com/dokyan1989/postgresdemo/server/dto"
+	"github.com/dokyan1989/postgresdemo/server/internal/repository"
+	"github.com/dokyan1989/postgresdemo/server/internal/transformer"
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/schema"
 	"go.uber.org/zap"
 )
 
 func (s *Service) ListOrdersByPlatform(w http.ResponseWriter, r *http.Request) {
-	var request dto.ListOrdersByPlatformRequest
-	err := schema.NewDecoder().Decode(&request, r.URL.Query())
+	data, err := s.listOrdersByPlatform(w, r)
 	if err != nil {
-		s.logger.Error("Error decoding request", zap.Error(err))
 		httphelper.WriteJSON(w, dto.ListOrdersByPlatformResponse{Code: 1, Message: err.Error()}, http.StatusBadRequest)
 		return
+	}
+
+	response := dto.ListOrdersByPlatformResponse{Code: 0, Message: "success", Data: data}
+	httphelper.WriteJSON(w, response, http.StatusOK)
+}
+
+func (s *Service) listOrdersByPlatform(w http.ResponseWriter, r *http.Request) (dto.ListOrdersResponseData, error) {
+	var data dto.ListOrdersResponseData
+
+	var request dto.ListOrdersByPlatformRequest
+	err := s.decodeListOrdersByPlatformRequest(&request, r)
+	if err != nil {
+		s.logger.Error("Error decoding request", zap.Error(err))
+		return data, err
+	}
+
+	logger := s.logger.Named("ListOrdersByPlatform").With(zap.Any("request", jsonhelper.Format(request)))
+
+	orders, err := s.repo.ListOrders(r.Context(), repository.ListOrdersOptions{
+		PlatformID:         request.PlatformID,
+		SellerID:           request.SellerID,
+		TerminalID:         request.TerminalID,
+		SiteID:             request.SiteID,
+		CreatorID:          request.CreatorID,
+		ConsultantID:       request.ConsultantID,
+		HoldStatus:         request.HoldStatus,
+		FulfillmentStatus:  request.FulfillmentStatus,
+		PaymentStatus:      request.PaymentStatus,
+		ConfirmationStatus: request.ConfirmationStatus,
+		Customer:           request.Customer,
+		OrderID:            request.OrderID,
+		CreatedAtGte:       request.CreatedAtGte,
+		CreatedAtLte:       request.CreatedAtLte,
+		SortBy:             request.SortBy,
+		SortOrder:          request.SortOrder,
+		Limit:              request.Limit,
+		Offset:             request.Offset,
+	})
+	if err != nil {
+		logger.Error("Error finding orders", zap.Error(err))
+		return data, err
+	}
+
+	ordersRawData, err := s.repo.ListOrdersRawDataByOrderIDs(r.Context(), model.OrderList(orders).GetIDs())
+	if err != nil {
+		logger.Error("Error finding orders raw data", zap.Error(err))
+		return data, err
+	}
+
+	var dt transformer.DtoTransformer
+	data.Orders = dt.ToBaseSaleOrders(orders, ordersRawData)
+
+	return data, nil
+}
+
+func (s *Service) decodeListOrdersByPlatformRequest(request *dto.ListOrdersByPlatformRequest, r *http.Request) error {
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		s.logger.Error("Error decoding request", zap.Error(err))
+		return err
 	}
 
 	platformId, err := strconv.ParseInt(chi.URLParam(r, "platformId"), 10, 64)
 	if err != nil {
 		s.logger.Error("Error parsing platform id", zap.Error(err))
-		httphelper.WriteJSON(w, dto.ListOrdersByPlatformResponse{Code: 1, Message: err.Error()}, http.StatusBadRequest)
-		return
-	}
-	request.PlatformID = int(platformId)
-
-	logger := s.logger.Named("ListOrdersByPlatform").With(zap.Any("request", jsonhelper.Format(request)))
-
-	session := s.db.NewSession(nil)
-
-	var orders model.OrderList
-	_, err = session.Select("*").From("orders").Where("platform_id = ?", request.PlatformID).Limit(10).Load(&orders)
-	if err != nil {
-		logger.Error("Error finding orders", zap.Error(err))
-		httphelper.WriteJSON(w, dto.ListOrdersByPlatformResponse{Code: 1, Message: err.Error()}, http.StatusBadRequest)
-		return
+		return err
 	}
 
-	var orderRawData []model.OrderRawData
-	_, err = session.Select("*").From("orders_raw_data").Where("id IN ?", orders.GetIDs()).Load(&orderRawData)
-	if err != nil {
-		logger.Error("Error finding orders raw data", zap.Error(err))
-		httphelper.WriteJSON(w, dto.ListOrdersByPlatformResponse{Code: 1, Message: err.Error()}, http.StatusBadRequest)
-		return
+	if err := request.Validate(); err != nil {
+		s.logger.Error("Error validating request", zap.Error(err))
+		return err
 	}
 
-	response := dto.ListOrdersByPlatformResponse{
-		Code:    0,
-		Message: "success",
-		Data: dto.ListOrdersResponseData{
-			Orders: []dto.ListOrdersBaseOrder{},
-		},
-	}
-
-	logger.Info("Get order details successfully", zap.Any("response", jsonhelper.Format(response)))
-	httphelper.WriteJSON(w, response, http.StatusOK)
+	request.PlatformID = platformId
+	return nil
 }

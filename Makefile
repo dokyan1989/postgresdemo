@@ -1,5 +1,5 @@
 server:
-	go run ./server $(cmd)
+	go run ./server start
 
 client:
 	go run client/*.go
@@ -14,7 +14,7 @@ create_pg_volume:
 run_pg:
 	docker run --name pg01 --rm -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=123456 \
 	 -e PGDATA=/var/lib/postgresql/data/pgdata \
-	 -v postgres:/var/lib/postgresql/data -p 5432:5432 -it postgres
+	 -v postgres:/var/lib/postgresql/data -p 5432:5432 -it postgres -c log_statement=all
 
 exec_pg:
 	docker exec -it pg01 /bin/sh
@@ -27,5 +27,13 @@ rm_pg:
 
 add_migration_file:
 	migrate create -dir=server/migrations -ext=sql $(name)
-	
-.PHONY: server client pull_pg create_pg_volume run_pg start_pg stop_pg rm_pg add_migration_file
+
+run_migration:
+	go run ./server migration
+
+seed:
+	go run ./server --seednum=$(n) seed
+
+.PHONY: server client pull_pg create_pg_volume run_pg start_pg stop_pg rm_pg add_migration_file run_migration seed
+
+# 

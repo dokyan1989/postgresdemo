@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dokyan1989/postgresdemo/helper/random"
+	"github.com/dokyan1989/postgresdemo/server/internal/repository"
 	"github.com/dokyan1989/postgresdemo/server/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -87,12 +88,12 @@ func start(cliCtx *cli.Context) error {
 	// through ctx.Done() that the request has timed out and further
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
-
-	s := service.NewService(conn, logger)
+	repo := repository.New(conn, logger)
+	s := service.NewService(repo, logger)
 
 	r.Get("/orders/{orderId}", s.GetOrderDetails)
-	r.Get("/orders-by-platform/{platformId}", s.ListOrdersByPlatform)
-	r.Get("/orders-by-seller/{sellerId}", s.ListOrdersBySeller)
+	r.Post("/orders-by-platform/{platformId}", s.ListOrdersByPlatform)
+	// r.Post("/orders-by-seller/{sellerId}", s.ListOrdersBySeller)
 
 	http.ListenAndServe(":3000", r)
 
@@ -120,40 +121,44 @@ func migration(cliCtx *cli.Context) error {
 }
 
 func seed(cliCtx *cli.Context) error {
-	t := time.Now()
-	var total int64 = 0
+	for i := 0; i < 2000; i++ {
+		t := time.Now()
+		var total int64 = 0
 
-	jobs := make(chan struct{}, seedNum)
-	rowCreated := make(chan int64, seedNum)
+		jobs := make(chan struct{}, seedNum)
+		rowCreated := make(chan int64, seedNum)
 
-	logger.Info("Seed num", zap.Int("seed_num", seedNum))
+		// logger.Info("Seed num", zap.Int("seed_num", seedNum))
 
-	for w := 1; w <= 10; w++ {
-		go func(w int) {
-			for range jobs {
-				n, err := doSeed(conn)
-				if err != nil {
-					logger.Error("doSeed error", zap.Error(err))
-					return
+		for w := 1; w <= 2; w++ {
+			go func(w int) {
+				for range jobs {
+					n, err := doSeed(conn)
+					if err != nil {
+						logger.Error("doSeed error", zap.Error(err))
+						return
+					}
+					rowCreated <- n
 				}
-				rowCreated <- n
-			}
-		}(w)
+			}(w)
+		}
+
+		for orderIndex := 0; orderIndex < seedNum; orderIndex++ {
+			jobs <- struct{}{}
+		}
+		close(jobs)
+
+		var i int = 0
+		for orderIndex := 0; orderIndex < seedNum; orderIndex++ {
+			n := <-rowCreated
+			total += n
+			i++
+		}
+
+		logger.Info(fmt.Sprintf("Seeding concurrency finished in %f seconds for inserting %d records", time.Since(t).Seconds(), total))
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	for orderIndex := 0; orderIndex < seedNum; orderIndex++ {
-		jobs <- struct{}{}
-	}
-	close(jobs)
-
-	var i int = 0
-	for orderIndex := 0; orderIndex < seedNum; orderIndex++ {
-		n := <-rowCreated
-		total += n
-		i++
-	}
-
-	logger.Info(fmt.Sprintf("Seeding concurrency finished in %f seconds for inserting %d records", time.Since(t).Seconds(), total))
 	return nil
 }
 
@@ -167,34 +172,11 @@ func doSeed(conn *dbr.Connection) (int64, error) {
 	}
 	defer tx.RollbackUnlessCommitted()
 
-	// Insert generated order
-	order := modelgen.GenOrder()
-	err = tx.InsertInto("orders").
-		Columns(
-			"id",
-			"fulfillment_status",
-			"payment_status",
-			"confirmation_status",
-			"customer_phone",
-			"customer_name",
-			"customer_email",
-			"shipping_info_phone",
-			"terminal_id",
-			"platform_id",
-			"creator_id",
-			"consultant_id",
-			"created_at",
-			"updated_at",
-		).
-		Record(order).
-		Returning("id").
-		Load(&order.ID)
+	orderRawData, err := modelgen.GenOrderRawData()
 	if err != nil {
 		return 0, err
 	}
-	rowCreatedCount++
 
-	orderRawData := modelgen.GenOrderRawData(order)
 	err = tx.InsertInto("orders_raw_data").
 		Columns(
 			"id",
@@ -211,7 +193,36 @@ func doSeed(conn *dbr.Connection) (int64, error) {
 	}
 	rowCreatedCount++
 
-	logger.Info("Order is created successfully", zap.String("order_id", order.ID))
+	// Insert generated order
+	order := modelgen.GenOrder(orderRawData)
+	err = tx.InsertInto("orders").
+		Columns(
+			"id",
+			"fulfillment_status",
+			"payment_status",
+			"hold_status",
+			"confirmation_status",
+			"customer_phone",
+			"customer_name",
+			"customer_email",
+			"shipping_info_phone",
+			"terminal_id",
+			"platform_id",
+			"creator_id",
+			"consultant_id",
+			"site_ids",
+			"created_at",
+			"updated_at",
+		).
+		Record(order).
+		Returning("id").
+		Load(&order.ID)
+	if err != nil {
+		return 0, err
+	}
+	rowCreatedCount++
+
+	// logger.Info("Order is created successfully", zap.String("order_id", order.ID))
 
 	shipmentsNum := random.Int(1, 3)
 	for shipmentIndex := 0; shipmentIndex < shipmentsNum; shipmentIndex++ {
@@ -234,7 +245,7 @@ func doSeed(conn *dbr.Connection) (int64, error) {
 			return 0, err
 		}
 		rowCreatedCount++
-		logger.Info("Shipment is created successfully", zap.String("shipment_id", shipment.ID))
+		// logger.Info("Shipment is created successfully", zap.String("shipment_id", shipment.ID))
 
 		invoice := modelgen.GenInvoice(order.ID, shipment.ID, shipment.SellerID)
 		_, err = tx.InsertInto("invoices").
@@ -252,7 +263,7 @@ func doSeed(conn *dbr.Connection) (int64, error) {
 			return 0, err
 		}
 		rowCreatedCount++
-		logger.Info("Invoice is created successfully", zap.String("invoice_id", fmt.Sprintf("%s_%s_%d", invoice.OrderID, invoice.ShipmentID, invoice.SellerID)))
+		// logger.Info("Invoice is created successfully", zap.String("invoice_id", fmt.Sprintf("%s_%s_%d", invoice.OrderID, invoice.ShipmentID, invoice.SellerID)))
 	}
 
 	tx.Commit()

@@ -1,18 +1,18 @@
 package service
 
 import (
-	"github.com/gocraft/dbr/v2"
+	"github.com/dokyan1989/postgresdemo/server/internal/repository"
 	"go.uber.org/zap"
 )
 
 type Service struct {
-	db     *dbr.Connection
+	repo   repository.Repository
 	logger *zap.Logger
 }
 
-func NewService(db *dbr.Connection, logger *zap.Logger) *Service {
+func NewService(repo repository.Repository, logger *zap.Logger) *Service {
 	return &Service{
-		db:     db,
+		repo:   repo,
 		logger: logger,
 	}
 }

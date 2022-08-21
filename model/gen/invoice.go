@@ -7,14 +7,13 @@ import (
 	"github.com/dokyan1989/postgresdemo/model"
 )
 
-func GenInvoice(orderID, shipmentID string, sellerID int64) *model.Invoice {
-	now := time.Now()
+func GenInvoice(orderID string, shipmentID string, sellerID int64) *model.Invoice {
 	invoice := &model.Invoice{
 		OrderID:    orderID,
 		ShipmentID: shipmentID,
 		SellerID:   sellerID,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		CreatedAt:  gofakeit.DateRange(time.Now().Add((-3)*OneYear), time.Now()),
+		UpdatedAt:  gofakeit.DateRange(time.Now().Add((-3)*OneYear), time.Now()),
 	}
 
 	// gen invoice info

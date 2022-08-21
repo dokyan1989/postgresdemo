@@ -19,15 +19,14 @@ func GenShipmentWithStatus(status string) GenShipmentOption {
 	}
 }
 func GenShipment(orderID string, opts ...GenShipmentOption) *model.Shipment {
-	now := time.Now()
 	shipment := &model.Shipment{
 		ID:        uuid.NewString(),
 		OrderID:   orderID,
 		SellerID:  int64(random.Int(1, 10)),
 		SiteID:    int64(random.Int(1, 10)),
 		Status:    GenShipmentStatus(),
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt: gofakeit.DateRange(time.Now().Add((-3)*OneYear), time.Now()),
+		UpdatedAt: gofakeit.DateRange(time.Now().Add((-3)*OneYear), time.Now()),
 	}
 
 	for _, opt := range opts {
